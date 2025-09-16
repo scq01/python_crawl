@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐播放器</title>
+    <script src="vue2.js"></script>
+    <script src="axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ec 100%);
+            color: #333;
+            min-height: 100vh;
+            padding-bottom: 120px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #4a6ee0;
+            text-shadow: 0 2px 4px rgba(74, 110, 224, 0.1);
+        }
+
+        .search-box {
+            display: flex;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-radius: 50px;
+            overflow: hidden;
+            background: white;
+            width: 100%;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            background: transparent;
+            color: #333;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: rgba(0, 0, 0, 0.4);
+        }
+
+        .search-btn {
+            padding: 15px 25px;
+            background: #4a6ee0;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover {
+            background: #3a5bc0;
+        }
+
+        .music-list {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            width: 100%;
+        }
+
+        .music-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: background 0.3s;
+        }
+
+        .music-item:hover {
+            background: rgba(74, 110, 224, 0.05);
+        }
+
+        .music-info {
+            flex: 1;
+            min-width: 0; /* 防止文本溢出 */
+        }
+
+        .song-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .artist {
+            color: rgba(0, 0, 0, 0.6);
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .play-btn {
+            background: #4a6ee0;
+            color: #fff;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, background 0.3s;
+            box-shadow: 0 2px 5px rgba(74, 110, 224, 0.3);
+            flex-shrink: 0;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.1);
+            background: #3a5bc0;
+        }
+
+        .player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .player-main {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .player-info {
+            flex: 1;
+            margin: 0 20px;
+            min-width: 0; /* 防止文本溢出 */
+        }
+
+        .player-song {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-artist {
+            font-size: 14px;
+            color: rgba(0, 0, 0, 0.6);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-controls {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: #4a6ee0;
+            font-size: 24px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: color 0.3s;
+            flex-shrink: 0;
+        }
+
+        .control-btn:hover {
+            color: #3a5bc0;
+        }
+
+        .now-playing {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+            color: #4a6ee0;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .now-playing i {
+            margin-right: 10px;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #4a6ee0;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 12px;
+            color: rgba(0, 0, 0, 0.6);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .page-btn {
+            background: #4a6ee0;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .page-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .page-btn:not(:disabled):hover {
+            background: #3a5bc0;
+        }
+
+        .page-info {
+            margin: 0 15px;
+            color: rgba(0, 0, 0, 0.6);
+        }
+
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.5s;
+        }
+
+        .fade-enter, .fade-leave-to {
+            opacity: 0;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 30px;
+            color: rgba(0, 0, 0, 0.5);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #4a6ee0;
+        }
+
+        /* 响应式设计 - 平板设备 */
+        @media (max-width: 992px) {
+            .container {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .search-box {
+                flex-direction: column;
+                border-radius: 10px;
+            }
+
+            .search-input {
+                padding: 12px 15px;
+            }
+
+            .search-btn {
+                padding: 12px;
+                border-radius: 0 0 10px 10px;
+            }
+
+            .player-main {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .player-info {
+                margin: 10px 0;
+                width: 100%;
+            }
+
+            .now-playing {
+                margin-bottom: 10px;
+            }
+        }
+
+        /* 响应式设计 - 手机设备 */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .music-item {
+                padding: 12px 15px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .play-btn {
+                margin-top: 10px;
+                align-self: flex-end;
+            }
+
+            .player {
+                padding: 10px 15px;
+            }
+
+            .player-controls {
+                margin-top: 10px;
+                width: 100%;
+                justify-content: center;
+            }
+
+            .control-btn {
+                font-size: 20px;
+                margin: 0 15px;
+            }
+
+            .pagination {
+                flex-direction: column;
+            }
+
+            .page-info {
+                margin: 10px 0;
+            }
+
+            .time-display {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .time-display span {
+                margin: 2px 0;
+            }
+        }
+
+        /* 响应式设计 - 小屏手机 */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .song-name {
+                font-size: 16px;
+            }
+
+            .artist {
+                font-size: 13px;
+            }
+
+            .player-song {
+                font-size: 14px;
+            }
+
+            .player-artist {
+                font-size: 12px;
+            }
+
+            .control-btn {
+                font-size: 18px;
+                margin: 0 10px;
+            }
+
+            .now-playing {
+                font-size: 14px;
+            }
+
+            .page-btn {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="container">
+        <header>
+            <h1>音乐播放器</h1>
+            <p>搜索并播放您喜爱的音乐</p>
+        </header>
+
+        <div class="search-box">
+            <input
+                    type="text"
+                    class="search-input"
+                    placeholder="输入歌曲名称..."
+                    v-model="searchQuery"
+                    @keyup.enter="searchMusic(1)"
+            >
+            <button class="search-btn" @click="searchMusic(1)">搜索</button>
+        </div>
+
+        <div class="music-list">
+            <div v-if="loading" class="loading">
+                <p>搜索中...</p>
+            </div>
+
+            <div v-else-if="musicList.length === 0" class="no-results">
+                <p v-if="searched">没有找到相关歌曲</p>
+                <p v-else>搜索音乐以显示结果</p>
+            </div>
+
+            <transition-group name="fade" v-else>
+                <div v-for="(music, index) in musicList" :key="index" class="music-item">
+                    <div class="music-info">
+                        <div class="song-name">{{ music.song_name }}</div>
+                        <div class="artist">{{ music.author_name }}</div>
+                    </div>
+                    <button class="play-btn" @click="playMusic(music)">
+                        <span v-if="currentSong && currentSong.play_url === music.play_url">■</span>
+                        <span v-else>▶</span>
+                    </button>
+                </div>
+            </transition-group>
+
+            <div class="pagination" v-if="total > 10">
+                <button class="page-btn" :disabled="currentPage <= 1" @click="prevPage">上一页</button>
+                <span class="page-info">第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</span>
+                <button class="page-btn" :disabled="currentPage >= totalPages" @click="nextPage">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="player" v-if="currentSong">
+        <div class="player-main">
+            <div class="now-playing">
+                <i>🎵</i>
+                <span>正在播放</span>
+            </div>
+            <div class="player-info">
+                <div class="player-song">{{ currentSong.song_name }}</div>
+                <div class="player-artist">{{ currentSong.author_name }}</div>
+            </div>
+            <div class="player-controls">
+                <button class="control-btn" @click="togglePlay">
+                    <span v-if="isPlaying">❚❚</span>
+                    <span v-else>▶</span>
+                </button>
+                <button class="control-btn" @click="stopMusic">■</button>
+            </div>
+        </div>
+
+        <div class="progress-container" @click="seek">
+            <div class="progress-bar" :style="{ width: progress + '%' }"></div>
+        </div>
+
+        <div class="time-display">
+            <span>{{ formatTime(currentTime) }}</span>
+            <span>{{ formatTime(duration) }}</span>
+        </div>
+
+        <audio
+                ref="audioPlayer"
+                :src="currentSong.play_url"
+                @timeupdate="updateProgress"
+                @ended="onSongEnded"
+                @loadedmetadata="onLoadedMetadata"
+        ></audio>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            searchQuery: '',
+            musicList: [],
+            currentSong: null,
+            isPlaying: false,
+            loading: false,
+            searched: false,
+            currentPage: 1,
+            total: 0,
+            pageSize: 10,
+            currentTime: 0,
+            duration: 0,
+            progress: 0
+        },
+        computed: {
+            totalPages() {
+                return Math.ceil(this.total / this.pageSize);
+            }
+        },
+        methods: {
+            searchMusic(page) {
+                if (!this.searchQuery.trim()) return;
+
+                this.loading = true;
+                this.searched = true;
+                this.currentPage = page || 1;
+
+                // 使用axios发起GET请求到本地服务器
+                axios.get('http://127.0.0.1:5000/search', {
+                    params: {
+                        keyword: this.searchQuery,
+                        page: this.currentPage
+                    }
+                })
+                    .then(response => {
+                        // 提取需要的字段
+                        this.musicList = response.data.data.map(item => ({
+                            song_name: item.song_name,
+                            author_name: item.author_name,
+                            play_url: item.play_url
+                        })).filter((item, index, self) =>
+                                index === self.findIndex(t =>
+                                    t.song_name === item.song_name && t.author_name === item.author_name
+                                )
+                        );
+                        this.total = response.data.total;
+                        this.loading = false;
+                    })
+                    .catch(error => {
+                        console.error('搜索失败:', error);
+                        this.loading = false;
+                        alert('搜索失败，请检查服务器连接');
+                    });
+            },
+
+            playMusic(music) {
+                // 如果点击的是当前正在播放的歌曲，则暂停/播放
+                if (this.currentSong && this.currentSong.play_url === music.play_url) {
+                    this.togglePlay();
+                    return;
+                }
+
+                this.currentSong = music;
+                this.isPlaying = true;
+
+                this.$nextTick(() => {
+                    const audio = this.$refs.audioPlayer;
+                    audio.play();
+                    // 重置进度条
+                    this.currentTime = 0;
+                    this.progress = 0;
+                });
+            },
+
+            togglePlay() {
+                if (!this.currentSong) return;
+
+                if (this.isPlaying) {
+                    this.$refs.audioPlayer.pause();
+                } else {
+                    this.$refs.audioPlayer.play();
+                }
+
+                this.isPlaying = !this.isPlaying;
+            },
+
+            stopMusic() {
+                if (!this.currentSong) return;
+
+                this.$refs.audioPlayer.pause();
+                this.$refs.audioPlayer.currentTime = 0;
+                this.isPlaying = false;
+                this.currentTime = 0;
+                this.progress = 0;
+            },
+
+            updateProgress(e) {
+                const audio = e.target;
+                this.currentTime = audio.currentTime;
+                this.duration = audio.duration || 0;
+                this.progress = (audio.currentTime / audio.duration) * 100 || 0;
+            },
+
+            onLoadedMetadata(e) {
+                this.duration = e.target.duration;
+            },
+
+            onSongEnded() {
+                this.isPlaying = false;
+                this.currentTime = 0;
+                this.progress = 0;
+            },
+
+            formatTime(seconds) {
+                if (isNaN(seconds)) return '00:00';
+
+                const minutes = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            },
+
+            seek(e) {
+                if (!this.currentSong) return;
+
+                const progressContainer = e.currentTarget;
+                const width = progressContainer.offsetWidth;
+                const clickX = e.offsetX;
+                const percent = clickX / width;
+
+                this.$refs.audioPlayer.currentTime = percent * this.duration;
+                this.progress = percent * 100;
+            },
+
+            prevPage() {
+                if (this.currentPage > 1) {
+                    this.searchMusic(this.currentPage - 1);
+                }
+            },
+
+            nextPage() {
+                if (this.currentPage < this.totalPages) {
+                    this.searchMusic(this.currentPage + 1);
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>
